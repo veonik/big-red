@@ -4,16 +4,45 @@
   <title>PRESS</title>
   <script src="//cdn.jsdelivr.net/jquery/2.1.1/jquery.min.js"></script>
   <script src="//cdn.jsdelivr.net/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+  <script src="//cdn.jsdelivr.net/momentjs/2.8.1/moment.min.js"></script>
   <link rel="stylesheet" href="//cdn.jsdelivr.net/bootstrap/3.2.0/css/bootstrap.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
   <div class="container">
-    <a href="/press" class="big-red{{if .Working}} working{{end}}"{{if .Working}} disabled="disabled"{{end}}>{{if .Working}}Working...{{else}}PRESS{{end}}</a>
+    <a href="/press" id="big-red" class="big-red{{if .Working}} working{{end}}"{{if .Working}} disabled="disabled"{{end}}>{{if .Working}}Working...{{else}}PRESS{{end}}</a>
     <div id="elapsed">
-      {{if .Working}}{{.Elapsed.String}}{{end}}
     </div>
   </div>
+  {{if .Working}}
+  <script type="text/javascript">
+      $(function() {
+          var start = moment.unix({{.StartTime.Unix}});
+          var $elapsed = $(document.getElementById('elapsed'));
+          var $bigRed  = $(document.getElementById('big-red'));
+
+          var workingInterval = setInterval(function() {
+              $elapsed.text('Started ' + start.fromNow());
+          }, 500);
+          
+          var updateInterval = setInterval(function() {
+              $.ajax({
+                  url: '/status',
+                  dataType: 'json',
+                  success: function(response) {
+                      if (!response.working) {
+                          clearInterval(workingInterval);
+                          clearInterval(updateInterval);
+                          
+                          $bigRed.removeClass('working').attr('disabled', false).text('PRESS');
+                          $elapsed.text('Finished in ' + start.fromNow(true));
+                      }
+                  }
+              });
+          }, 2000);
+      });
+  </script>
+  {{end}}
 </body>
 </html>

@@ -96,6 +96,10 @@ func main() {
 
 		r.Redirect("/")
 	})
+	
+	m.Get("/status", func(r render.Render) {
+		r.JSON(200, map[string]interface{}{"working": state.Working})
+	})
 
 	m.Run()
 }
