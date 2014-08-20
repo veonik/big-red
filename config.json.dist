@@ -1,0 +1,13 @@
+{
+  "PrivateKeyFile": "id_rsa",
+  "Source": {
+    "User": "source-user",
+    "Host": "source.local",
+    "Command": "mysqldump -h127.0.0.1 -uroot --lock-all-tables database | gzip"
+  },
+  "Destination": {
+    "User": "dest-user",
+    "Host": "dest.local",
+    "Command": "zcat - | mysql -uroot database"
+  }
+}

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PRESS</title>
+  <script src="//cdn.jsdelivr.net/jquery/2.1.1/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/bootstrap/3.2.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <a href="/press" class="big-red{{if .Working}} working{{end}}"{{if .Working}} disabled="disabled"{{end}}>PRESS</a>
+  {{if .Working}}Been working on this since {{.StartTime.Format "2006-01-02 03:04 PM"}} - {{.Elapsed.String}}{{end}}
+</body>
+</html>
