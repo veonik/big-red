@@ -12,6 +12,16 @@ import (
 	"time"
 )
 
+type LoggerWriter struct {
+	Logger *log.Logger
+}
+
+func (self LoggerWriter) Write(p []byte) (n int, err error) {
+	self.Logger.Print(string(p))
+
+	return len(p), nil
+}
+
 type EndpointConfiguration struct {
 	User    string
 	Host    string
@@ -122,11 +132,13 @@ func (state *AppState) PerformDump() {
 		panic("Could create pipe: " + err.Error())
 	}
 
-	destSession.Stdin = stdoutPipe
-	destSession.Stdout = os.Stdout
-	destSession.Stderr = os.Stderr
+	loggerWriter := LoggerWriter{state.Logger}
 
-	sourceSession.Stderr = os.Stderr
+	destSession.Stdin = stdoutPipe
+	destSession.Stdout = loggerWriter
+	destSession.Stderr = loggerWriter
+
+	sourceSession.Stderr = loggerWriter
 
 	if err := destSession.Start(state.Configuration.Destination.Command); err != nil {
 		panic("Failed to run destination command: " + err.Error())
