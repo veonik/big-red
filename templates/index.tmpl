@@ -9,7 +9,11 @@
 </head>
 
 <body>
-  <a href="/press" class="big-red{{if .Working}} working{{end}}"{{if .Working}} disabled="disabled"{{end}}>PRESS</a>
-  {{if .Working}}Been working on this since {{.StartTime.Format "2006-01-02 03:04 PM"}} - {{.Elapsed.String}}{{end}}
+  <div class="container">
+    <a href="/press" class="big-red{{if .Working}} working{{end}}"{{if .Working}} disabled="disabled"{{end}}>{{if .Working}}Working...{{else}}PRESS{{end}}</a>
+    <div id="elapsed">
+      {{if .Working}}{{.Elapsed.String}}{{end}}
+    </div>
+  </div>
 </body>
 </html>

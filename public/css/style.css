@@ -64,3 +64,15 @@
 .big-red[disabled]:active {
   top: 0;
 }
+
+#elapsed {
+  width: 250px;
+  height: 30px;
+  text-align: center;
+  position: absolute;
+  top:300px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+}
