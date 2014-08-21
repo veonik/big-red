@@ -10,6 +10,8 @@ import (
 	"os"
 	"runtime"
 	"time"
+	"io"
+	"sync"
 )
 
 type LoggerWriter struct {
@@ -131,29 +133,121 @@ func (state *AppState) PerformDump() {
 	destSession := state.newDestinationSession()
 	defer destSession.Close()
 
-	stdoutPipe, err := sourceSession.StdoutPipe()
+	stdoutReader, err := sourceSession.StdoutPipe()
+	if err != nil {
+		panic("Could create pipe: " + err.Error())
+	}
+
+	stdinWriter, err := destSession.StdinPipe()
 	if err != nil {
 		panic("Could create pipe: " + err.Error())
 	}
 
 	loggerWriter := LoggerWriter{state.Logger}
-
-	destSession.Stdin = stdoutPipe
 	destSession.Stdout = loggerWriter
 	destSession.Stderr = loggerWriter
 
 	sourceSession.Stderr = loggerWriter
 
-	if err := destSession.Start(state.Configuration.Destination.Command); err != nil {
-		panic("Failed to run destination command: " + err.Error())
-	}
-
 	if err := sourceSession.Start(state.Configuration.Source.Command); err != nil {
 		panic("Failed to run source command: " + err.Error())
 	}
 
-	sourceSession.Wait()
-	destSession.Wait()
+	if err := destSession.Start(state.Configuration.Destination.Command); err != nil {
+		panic("Failed to run destination command: " + err.Error())
+	}
+
+	buf := make([]byte, 4096)
+	storage := make([]byte, 0)
+	length := 0
+	reading := true
+	mutex := &sync.Mutex{}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		state.Logger.Println("Starting read")
+
+		for {
+			n, err := stdoutReader.Read(buf)
+			if err != nil && err != io.EOF {
+				panic(err)
+			}
+			if n == 0 {
+				break
+			}
+
+			mutex.Lock()
+			storage = append(storage, buf...)
+			length = len(storage)
+			mutex.Unlock()
+		}
+
+		mutex.Lock()
+		reading = false
+		mutex.Unlock()
+
+		if err := sourceSession.Wait(); err != nil {
+			panic("Source command failed: " + err.Error())
+		}
+
+		state.Logger.Println("Finished reading source. Total size:", length, "bytes")
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		state.Logger.Println("Starting write")
+
+		position := 0
+		chunkSize := 1024 * 1024 * 2
+		for {
+			mutex.Lock()
+			currentlyReading := reading
+			currentLength := length
+			mutex.Unlock()
+
+			if currentlyReading && (currentLength <= 0 || (currentLength-position) < chunkSize) {
+				continue
+			}
+
+			newPosition := position + chunkSize
+			if newPosition > currentLength {
+				newPosition = currentLength
+			}
+
+			mutex.Lock()
+			slice := storage[position:newPosition]
+			mutex.Unlock()
+
+			delta := len(slice)
+
+			if _, err := stdinWriter.Write(slice); err != nil {
+				panic(err)
+			}
+			state.Logger.Println("Wrote", delta, "bytes")
+			position += delta
+
+			if !currentlyReading && position == currentLength {
+				break
+			}
+
+			mutex.Lock()
+			storage = storage[position:]
+			length = len(storage)
+			position = 0
+			mutex.Unlock()
+		}
+
+		state.Logger.Println("Finished writing destination, waiting for command to complete")
+
+		stdinWriter.Close()
+		if err := destSession.Wait(); err != nil {
+			panic("Destination command failed: " + err.Error())
+		}
+	}()
+
+	wg.Wait()
 }
 
 func (state *AppState) Elapsed() time.Duration {
