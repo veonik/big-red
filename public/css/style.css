@@ -1,78 +1,116 @@
 .big-red {
-	-moz-box-shadow:inset 0px 1px 0px 0px #f29c93;
-	-webkit-box-shadow:inset 0px 1px 0px 0px #f29c93;
-	box-shadow:inset 0px 1px 0px 0px #f29c93;
-	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #fe1a00), color-stop(1, #ce0100) );
-	background:-moz-linear-gradient( center top, #fe1a00 5%, #ce0100 100% );
-	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#fe1a00', endColorstr='#ce0100');
-	background-color:#fe1a00;
-
-  height: 250px;
-  width: 250px;
-  border-radius: 250px;
-  text-align: center;
-  line-height: 250px;
-  color: white;
-  position: absolute;
-  top:0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
-
-	text-indent:0;
-	border:1px solid #d83526;
-	font-size:25px;
-	font-weight:bold;
-	font-style:normal;
-	text-decoration:none;
-	text-align:center;
-	text-shadow:1px 1px 0px #b23e35;
+	box-sizing: content-box;
+	-webkit-transition: border .5s, color .5s, -webkit-box-shadow .5s, box-shadow .5s, text-shadow .2s, opacity .5s;
+	transition:border .5s, color .5s, -moz-box-shadow .5s, box-shadow .5s, text-shadow .2s, opacity .5s;
+	z-index: 9;
+	-moz-box-shadow: inset 0px 1px 0px 0px #f29c93;
+	-webkit-box-shadow: inset 0px 1px 0px 0px #f29c93;
+	box-shadow: inset 0px 1px 0px 0px #f29c93;
+	background: -webkit-gradient( linear, left top, left bottom, color-stop(0.05, #fe1a00), color-stop(1, #ce0100) );
+	background: -moz-linear-gradient( center top, #fe1a00 5%, #ce0100 100% );
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#fe1a00', endColorstr='#ce0100');
+	background-color: #fe1a00;
+	height: 250px;
+	width: 250px;
+	border-radius: 250px;
+	text-align: center;
+	line-height: 250px;
+	color: white;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	margin: auto;
+	text-indent: 0;
+	border: 1px solid #d83526;
+	font-size: 25px;
+	font-weight: bold;
+	font-style: normal;
+	text-decoration: none;
+	text-align: center;
+	text-shadow: 1px 1px 0px #b23e35;
 }
 
 .big-red:hover {
-  color: white;
-  text-decoration: none;
-	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #ce0100), color-stop(1, #fe1a00) );
-	background:-moz-linear-gradient( center top, #ce0100 5%, #fe1a00 100% );
-	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ce0100', endColorstr='#fe1a00');
-	background-color:#ce0100;
+	color: white;
+	text-decoration: none;
+	background: -webkit-gradient( linear, left top, left bottom, color-stop(0.05, #ce0100), color-stop(1, #fe1a00) );
+	background: -moz-linear-gradient( center top, #ce0100 5%, #fe1a00 100% );
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ce0100', endColorstr='#fe1a00');
+	background-color: #ce0100;
 }
 
 .big-red:active {
-	position:absolute;
-	top:5px;
+	position: absolute;
+	top: 5px;
+	border: 10px solid white;
 }
 
-.big-red[disabled] {
-  cursor: default;
-	-moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
-	-webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
-	box-shadow:inset 0px 1px 0px 0px #ffffff;
-  background: none;
-	background-color:#ededed;
-	text-indent:0;
-	border:1px solid #dcdcdc;
-	color:#777777;
-	font-weight:bold;
-	font-style:normal;
-	text-decoration:none;
-	text-align:center;
-	text-shadow:1px 1px 0px #ffffff;
+.big-red.working {
+	cursor: default;
+	-moz-box-shadow: inset 0px 1px 0px 0px #ffffff;
+	-webkit-box-shadow: inset 0px 1px 0px 0px #ffffff;
+	box-shadow: inset 0px 1px 0px 0px #ffffff;
+
+	text-indent: 0;
+	border: 1px solid #dcdcdc;
+	color: #777777;
+	font-weight: bold;
+	font-style: normal;
+	text-decoration: none;
+	text-align: center;
+	text-shadow: 1px 1px 0px #ffffff;
 }
 
-.big-red[disabled]:active {
-  top: 0;
+.big-red.working:active {
+	top: 0;
+}
+
+.big-red-helper {
+	position: absolute;
+	z-index: -1;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	background: none;
+	background-color: #ededed;
+	border-radius: 250px;
+	text-align: center;
+	line-height: 250px;
+	color: white;
+	
+	text-indent: 0;
+	border: 1px solid #dcdcdc;
+	font-weight: bold;
+	font-style: normal;
+	text-decoration: none;
+	text-align: center;
+	text-shadow: 1px 1px 0px #ffffff;
+	position: absolute;
+	-moz-box-shadow: inset 0px 1px 0px 0px #ffffff;
+	-webkit-box-shadow: inset 0px 1px 0px 0px #ffffff;
+	box-shadow: inset 0px 1px 0px 0px #ffffff;
+	-webkit-transition: opacity .5s;
+	-moz-transition: opacity .5s;
+	-o-transition: opacity .5s;
+	transition: opacity .5s;
+}
+
+.big-red.working .big-red-helper {
+	opacity: 1;
 }
 
 #elapsed {
-  width: 250px;
-  height: 30px;
-  text-align: center;
-  position: absolute;
-  top:300px;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
+	width: 500px;
+	height: 30px;
+	text-align: center;
+	position: absolute;
+	top: 300px;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	margin: auto;
 }

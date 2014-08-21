@@ -10,39 +10,119 @@
 </head>
 
 <body>
-  <div class="container">
-    <a href="/press" id="big-red" class="big-red{{if .Working}} working{{end}}"{{if .Working}} disabled="disabled"{{end}}>{{if .Working}}Working...{{else}}PRESS{{end}}</a>
-    <div id="elapsed">
+  <div id="main-container" class="container" style="display: none">
+    <a href="/press" id="big-red" class="big-red">
+        <span class="big-red-helper"></span>
+        <span id="big-red-label">PRESS</span>
+    </a>
+    <div id="elapsed" style="display: none">
     </div>
   </div>
-  {{if .Working}}
   <script type="text/javascript">
       $(function() {
-          var start = moment.unix({{.StartTime.Unix}});
-          var $elapsed = $(document.getElementById('elapsed'));
-          var $bigRed  = $(document.getElementById('big-red'));
-
-          var workingInterval = setInterval(function() {
-              $elapsed.text('Started ' + start.fromNow());
-          }, 500);
+          var state = {
+              working:   false,
+              startedAt: null
+          };
           
-          var updateInterval = setInterval(function() {
-              $.ajax({
+          var fetchStateReq;
+          var startWorkReq;
+          
+          var intervalMs = 100;
+          var timeout;
+          
+          var $mainContainer = $(document.getElementById('main-container'));
+          var $elapsed       = $(document.getElementById('elapsed'));
+          var $bigRed        = $(document.getElementById('big-red'));
+          var $bigRedLabel   = $(document.getElementById('big-red-label'));
+          var nullMoment     = {
+              fromNow: function() {
+                  return "unknown";
+              }
+          }
+          
+          $bigRed.on('click', function(e) {
+              e.preventDefault();
+              
+              if (state.working || startWorkReq) {
+                  return;
+              }
+              
+              startWorkingReq = $.ajax({
+                  url: '/press',
+                  type: 'post',
+                  success: fetchState,
+                  error:   function() {
+                      console.log(arguments);
+                  },
+                  complete: function() {
+                      startWorkingReq = null;
+                  }
+              });
+          });
+          
+          var updateElapsed = function() {
+              $elapsed.text('Started ' + state.startedAt.fromNow()).fadeIn();
+          };
+          
+          var fetchState = function() {
+              if (fetchStateReq) {
+                  fetchStateReq.abort();
+              }
+              
+              fetchStateReq = $.ajax({
                   url: '/status',
                   dataType: 'json',
                   success: function(response) {
-                      if (!response.working) {
-                          clearInterval(workingInterval);
-                          clearInterval(updateInterval);
+                      response.working           = response.working || false;
+                      response.startedAt         = response.startedAt 
+                          ? moment(response.startedAt) 
+                          : nullMoment;
                           
-                          $bigRed.removeClass('working').attr('disabled', false).text('PRESS');
-                          $elapsed.text('Finished in ' + start.fromNow(true));
-                      }
+                      response.lastRun           = response.lastRun || {};
+                      response.lastRun.error     = response.lastRun.error || null;
+                      response.lastRun.startedAt = response.lastRun.startedAt 
+                          ? moment(response.lastRun.startedAt) 
+                          : nullMoment;
+                          
+                      updateState(response);
+                  },
+                  error: function() {
+                      console.log(arguments);
+                  },
+                  complete: function() {
+                      fetchStateReq = null;
                   }
               });
-          }, 2000);
+          };
+          
+          var updateState = function(currentState) {
+              previousState = state;
+              state         = currentState;
+              
+              if (previousState.working && !currentState.working) {
+                  clearInterval(timeout);
+                  $bigRed.removeClass('working');
+                  $bigRedLabel.text('PRESS');
+                  
+                  if (!currentState.lastRun.error) {
+                      $elapsed.text('Finished in ' + currentState.lastRun.startedAt.fromNow(true));
+                      
+                  } else {
+                      $elapsed.addClass('error').text('Failed after ' + currentState.lastRun.startedAt.fromNow(true) + ' with: '+ currentState.lastRun.error);
+                  }
+                  
+              } else if (!previousState.working && currentState.working) {
+                  $elapsed.fadeOut();
+                  timeout = setInterval(updateElapsed, 5000);
+                  $bigRed.addClass('working');
+                  $bigRedLabel.text('Working...');
+              }
+          };
+          
+          var updateInterval = setInterval(fetchState, 5000);
+          $mainContainer.fadeIn();
       });
   </script>
-  {{end}}
 </body>
 </html>

@@ -97,12 +97,12 @@ func main() {
 		r.HTML(200, "index", state)
 	})
 
-	m.Get("/press", func(r render.Render) {
+	m.Post("/press", func(r render.Render) {
 		if !state.Working {
 			go state.PerformDump()
 		}
 
-		r.Redirect("/")
+		r.JSON(200, nil)
 	})
 
 	m.Get("/status", func(r render.Render) {
