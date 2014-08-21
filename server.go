@@ -37,11 +37,17 @@ type AppConfiguration struct {
 	Destination    EndpointConfiguration
 }
 
+type LastRun struct {
+	Error     string
+	StartTime *time.Time
+}
+
 type AppState struct {
 	Working       bool
 	StartTime     *time.Time
 	Configuration AppConfiguration
 	Logger        *log.Logger
+	LastRun       LastRun
 }
 
 func NewAppState() *AppState {
@@ -78,7 +84,7 @@ func NewAppState() *AppState {
 
 	logger := log.New(os.Stdout, "[big-red] ", 0)
 
-	return &AppState{false, nil, config, logger}
+	return &AppState{false, nil, config, logger, LastRun{"", nil}}
 }
 
 func main() {
@@ -98,9 +104,9 @@ func main() {
 
 		r.Redirect("/")
 	})
-	
+
 	m.Get("/status", func(r render.Render) {
-		r.JSON(200, map[string]interface{}{"working": state.Working})
+		r.JSON(200, map[string]interface{}{"working": state.Working, "startedAt": state.StartTime, "lastRun": map[string]interface{}{"error": state.LastRun.Error, "startedAt": state.LastRun.StartTime}})
 	})
 
 	m.Run()
@@ -109,11 +115,25 @@ func main() {
 func (state *AppState) PerformDump() {
 	defer func() {
 		if r := recover(); r != nil {
+			original, ok := r.(string)
+			if ok {
+				state.LastRun.Error = original
+			} else {
+				original, ok := r.(error)
+				if ok {
+					state.LastRun.Error = original.Error()
+				}
+			}
+
 			buf := make([]byte, 1<<16)
 			runtime.Stack(buf, false)
 			state.Logger.Println(r)
 			state.Logger.Println(buf)
+		} else {
+			state.LastRun.Error = ""
 		}
+
+		state.LastRun.StartTime = state.StartTime
 
 		state.Logger.Println("Done. Took " + state.Elapsed().String())
 
