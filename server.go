@@ -1,17 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"code.google.com/p/go.crypto/ssh"
 	"encoding/json"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
-	"time"
-	"io"
 	"sync"
+	"time"
 )
 
 type LoggerWriter struct {
@@ -177,10 +178,10 @@ func (state *AppState) PerformDump() {
 		panic("Failed to run destination command: " + err.Error())
 	}
 
-	buf := make([]byte, 4096)
-	storage := make([]byte, 0)
-	length := 0
+	storage := bytes.Buffer{}
 	reading := true
+	bytesRead := 0
+	bytesWritten := 0
 	mutex := &sync.Mutex{}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -188,6 +189,7 @@ func (state *AppState) PerformDump() {
 		defer wg.Done()
 		state.Logger.Println("Starting read")
 
+		buf := make([]byte, 4096)
 		for {
 			n, err := stdoutReader.Read(buf)
 			if err != nil && err != io.EOF {
@@ -198,9 +200,15 @@ func (state *AppState) PerformDump() {
 			}
 
 			mutex.Lock()
-			storage = append(storage, buf...)
-			length = len(storage)
+			bytesRead += n
 			mutex.Unlock()
+
+			mutex.Lock()
+			n, err = storage.Write(buf[0:n])
+			mutex.Unlock()
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		mutex.Lock()
@@ -211,7 +219,7 @@ func (state *AppState) PerformDump() {
 			panic("Source command failed: " + err.Error())
 		}
 
-		state.Logger.Println("Finished reading source. Total size:", length, "bytes")
+		state.Logger.Println("Finished reading source. Total size:", bytesRead, "bytes")
 	}()
 
 	wg.Add(1)
@@ -219,47 +227,33 @@ func (state *AppState) PerformDump() {
 		defer wg.Done()
 		state.Logger.Println("Starting write")
 
-		position := 0
 		chunkSize := 1024 * 1024 * 2
 		for {
 			mutex.Lock()
 			currentlyReading := reading
-			currentLength := length
+			currentLength := storage.Len()
 			mutex.Unlock()
 
-			if currentlyReading && (currentLength <= 0 || (currentLength-position) < chunkSize) {
+			if currentlyReading && currentLength <= chunkSize {
 				continue
-			}
 
-			newPosition := position + chunkSize
-			if newPosition > currentLength {
-				newPosition = currentLength
-			}
-
-			mutex.Lock()
-			slice := storage[position:newPosition]
-			mutex.Unlock()
-
-			delta := len(slice)
-
-			if _, err := stdinWriter.Write(slice); err != nil {
-				panic(err)
-			}
-			state.Logger.Println("Wrote", delta, "bytes")
-			position += delta
-
-			if !currentlyReading && position == currentLength {
+			} else if !currentlyReading && currentLength <= 0 {
 				break
 			}
 
 			mutex.Lock()
-			storage = storage[position:]
-			length = len(storage)
-			position = 0
+			n, err := stdinWriter.Write(storage.Next(chunkSize))
 			mutex.Unlock()
+			if err != nil {
+				panic(err)
+			}
+
+			bytesWritten += n
+			state.Logger.Println("Wrote", n, "bytes")
 		}
 
-		state.Logger.Println("Finished writing destination, waiting for command to complete")
+		state.Logger.Println("Finished writing destination. Total size:", bytesWritten, "bytes")
+		state.Logger.Println("Waiting for destination command to complete")
 
 		stdinWriter.Close()
 		if err := destSession.Wait(); err != nil {
