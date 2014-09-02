@@ -204,7 +204,7 @@ func (state *AppState) PerformDump() {
 			mutex.Unlock()
 
 			mutex.Lock()
-			n, err = storage.Write(buf[0:n])
+			_, err = storage.Write(buf[0:n])
 			mutex.Unlock()
 			if err != nil {
 				panic(err)
@@ -227,14 +227,14 @@ func (state *AppState) PerformDump() {
 		defer wg.Done()
 		state.Logger.Println("Starting write")
 
-		chunkSize := 1024 * 1024 * 2
+		buf := make([]byte, 1<<21) // 2MiB
 		for {
 			mutex.Lock()
 			currentlyReading := reading
 			currentLength := storage.Len()
 			mutex.Unlock()
 
-			if currentlyReading && currentLength <= chunkSize {
+			if currentlyReading && currentLength < cap(buf) {
 				continue
 
 			} else if !currentlyReading && currentLength <= 0 {
@@ -242,14 +242,19 @@ func (state *AppState) PerformDump() {
 			}
 
 			mutex.Lock()
-			n, err := stdinWriter.Write(storage.Next(chunkSize))
+			n, err := storage.Read(buf)
 			mutex.Unlock()
+			if err != nil {
+				panic(err)
+			}
+			
+			nw, err := stdinWriter.Write(buf[0:n])
 			if err != nil {
 				panic(err)
 			}
 
 			bytesWritten += n
-			state.Logger.Println("Wrote", n, "bytes")
+			state.Logger.Println("Read", n, "bytes", "Wrote", nw, "bytes")
 		}
 
 		state.Logger.Println("Finished writing destination. Total size:", bytesWritten, "bytes")
